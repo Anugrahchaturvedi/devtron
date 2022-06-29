@@ -758,7 +758,7 @@ func (impl GitHubClient) createReadme(repoName, userName, userEmailId string) (s
 		ChartName:      repoName,
 		ChartLocation:  "",
 		FileName:       "README.md",
-		FileContent:    "@devtron update",
+		FileContent:    "@devtron",
 		ReleaseMessage: "readme",
 		ChartRepoName:  repoName,
 		UserName:       userName,
@@ -817,11 +817,10 @@ func (impl GitHubClient) CommitValues(config *ChartConfig, bitbucketWorkspaceId 
 
 func (impl GitHubClient) GetRepoUrl(projectName string, repoOptions *bitbucket.RepositoryOptions) (repoUrl string, err error) {
 	ctx := context.Background()
-	repo, respo, err := impl.client.Repositories.Get(ctx, impl.org, projectName)
+	repo, _, err := impl.client.Repositories.Get(ctx, impl.org, projectName)
 	if err != nil {
 		return "", err
 	}
-	impl.logger.Info(respo)
 	return *repo.CloneURL, nil
 }
 

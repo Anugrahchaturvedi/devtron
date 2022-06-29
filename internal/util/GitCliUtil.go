@@ -21,6 +21,8 @@ func NewGitCliUtil(logger *zap.SugaredLogger) *GitCliUtil {
 }
 
 const GIT_ASK_PASS = "/git-ask-pass.sh"
+const Branch_Master = "master"
+const Branch_Main = "main"
 
 func (impl *GitCliUtil) Fetch(rootDir string, username string, password string) (response, errMsg string, err error) {
 	impl.logger.Debugw("git fetch ", "location", rootDir)
@@ -100,13 +102,17 @@ func (impl *GitCliUtil) Clone(rootDir string, remoteUrl string, username string,
 	}
 	response, errMsg, err = impl.Fetch(rootDir, username, password)
 	if err == nil && errMsg == "" {
-		response, errMsg, err = impl.Pull(rootDir, username, password, "master")
+		impl.logger.Warn("git fetch completed, pulling master branch data from remote origin")
+		response, errMsg, err = impl.Pull(rootDir, username, password, Branch_Master)
 		if err != nil {
-			response, errMsg, err = impl.Pull(rootDir, username, password, "main")
-		}
-		if err != nil {
-			err = &ApiError{HttpStatusCode: 0, InternalMessage: "unable to pull main or master branch", UserMessage: "unable to pull main or master branch"}
-			return response, errMsg, err
+			impl.logger.Errorw("error on git pull master branch", "err", err)
+			response, errMsg, err = impl.Pull(rootDir, username, password, Branch_Main)
+			if err != nil {
+				impl.logger.Errorw("error on git pull master main", "err", err)
+				msg := "can't find valid branches in git repo , repo must have main or master branch"
+				err = &ApiError{HttpStatusCode: 200, Code: "400", InternalMessage: msg, UserMessage: msg}
+				return response, errMsg, err
+			}
 		}
 	}
 	return response, errMsg, err
