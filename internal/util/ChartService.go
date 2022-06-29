@@ -262,13 +262,13 @@ func (impl ChartTemplateServiceImpl) pushChartToGitRepo(gitOpsRepoName, referenc
 	}
 
 	dir := filepath.Join(clonedDir, referenceTemplate, version)
-	err = os.MkdirAll(dir, os.ModePerm)
-	if err != nil {
-		impl.logger.Errorw("error in making dir", "err", err)
-		return err
-	}
 	//if chart already exists don't overrides it by reference template
 	if _, err := os.Stat(dir); os.IsNotExist(err) {
+		err = os.MkdirAll(dir, os.ModePerm)
+		if err != nil {
+			impl.logger.Errorw("error in making dir", "err", err)
+			return err
+		}
 		err = dirCopy.Copy(tempReferenceTemplateDir, dir)
 		if err != nil {
 			impl.logger.Errorw("error copying dir", "err", err)
