@@ -66,6 +66,13 @@ func (impl GitBitbucketClient) CreateRepository(name, description, workSpaceId, 
 		return "", false, detailedErrorGitOpsConfigActions
 	}
 	if repoExists {
+		// This will update readme on cd pipeline creation, this is because for empty repository argocd will throw error.
+		err = impl.createReadme(repoOptions, userName, userEmailId)
+		if err != nil {
+			impl.logger.Errorw("error in creating readme bitbucket", "repoName", repoOptions.RepoSlug, "err", err)
+			detailedErrorGitOpsConfigActions.StageErrorMap[CreateReadmeStage] = err
+			return url, true, detailedErrorGitOpsConfigActions
+		}
 		detailedErrorGitOpsConfigActions.SuccessfulStages = append(detailedErrorGitOpsConfigActions.SuccessfulStages, GetRepoUrlStage)
 		return repoUrl, false, detailedErrorGitOpsConfigActions
 	}

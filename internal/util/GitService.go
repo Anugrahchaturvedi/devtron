@@ -311,6 +311,13 @@ func (impl GitLabClient) CreateRepository(name, description, bitbucketWorkspaceI
 		return "", false, detailedErrorGitOpsConfigActions
 	}
 	if len(repoUrl) > 0 {
+		// This will update readme on cd pipeline creation, this is because for empty repository argocd will throw error.
+		_, err = impl.createReadme(impl.config.GitlabGroupPath, name, userName, userEmailId)
+		if err != nil {
+			impl.logger.Errorw("error in creating readme ", "gitlab project", name, "err", err)
+			detailedErrorGitOpsConfigActions.StageErrorMap[CreateReadmeStage] = err
+			return repoUrl, true, detailedErrorGitOpsConfigActions
+		}
 		detailedErrorGitOpsConfigActions.SuccessfulStages = append(detailedErrorGitOpsConfigActions.SuccessfulStages, GetRepoUrlStage)
 		return repoUrl, false, detailedErrorGitOpsConfigActions
 	} else {
@@ -685,6 +692,13 @@ func (impl GitHubClient) CreateRepository(name, description, bitbucketWorkspaceI
 		}
 	}
 	if repoExists {
+		// This will update readme on cd pipeline creation, this is because for empty repository argocd will throw error.
+		_, err = impl.createReadme(name, userName, userEmailId)
+		if err != nil {
+			impl.logger.Errorw("error in creating readme github", "project", name, "err", err)
+			detailedErrorGitOpsConfigActions.StageErrorMap[CreateReadmeStage] = err
+			return url, true, detailedErrorGitOpsConfigActions
+		}
 		detailedErrorGitOpsConfigActions.SuccessfulStages = append(detailedErrorGitOpsConfigActions.SuccessfulStages, GetRepoUrlStage)
 		return url, false, detailedErrorGitOpsConfigActions
 	}
@@ -744,7 +758,7 @@ func (impl GitHubClient) createReadme(repoName, userName, userEmailId string) (s
 		ChartName:      repoName,
 		ChartLocation:  "",
 		FileName:       "README.md",
-		FileContent:    "@devtron",
+		FileContent:    "@devtron update",
 		ReleaseMessage: "readme",
 		ChartRepoName:  repoName,
 		UserName:       userName,
@@ -803,10 +817,11 @@ func (impl GitHubClient) CommitValues(config *ChartConfig, bitbucketWorkspaceId 
 
 func (impl GitHubClient) GetRepoUrl(projectName string, repoOptions *bitbucket.RepositoryOptions) (repoUrl string, err error) {
 	ctx := context.Background()
-	repo, _, err := impl.client.Repositories.Get(ctx, impl.org, projectName)
+	repo, respo, err := impl.client.Repositories.Get(ctx, impl.org, projectName)
 	if err != nil {
 		return "", err
 	}
+	impl.logger.Info(respo)
 	return *repo.CloneURL, nil
 }
 
