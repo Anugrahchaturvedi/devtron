@@ -22,7 +22,6 @@ func NewGitCliUtil(logger *zap.SugaredLogger) *GitCliUtil {
 
 const GIT_ASK_PASS = "/git-ask-pass.sh"
 const Branch_Master = "master"
-const Branch_Main = "main"
 
 func (impl *GitCliUtil) Fetch(rootDir string, username string, password string) (response, errMsg string, err error) {
 	impl.logger.Debugw("git fetch ", "location", rootDir)
@@ -44,6 +43,14 @@ func (impl *GitCliUtil) Checkout(rootDir string, branch string) (response, errMs
 	cmd := exec.Command("git", "-C", rootDir, "checkout", branch, "--force")
 	output, errMsg, err := impl.runCommand(cmd)
 	impl.logger.Debugw("checkout output", "root", rootDir, "opt", output, "errMsg", errMsg, "error", err)
+	return output, errMsg, err
+}
+
+func (impl *GitCliUtil) ListBranch(rootDir string, username string, password string) (response, errMsg string, err error) {
+	impl.logger.Debugw("git branch ", "location", rootDir)
+	cmd := exec.Command("git", "-C", rootDir, "branch", "-r")
+	output, errMsg, err := impl.runCommandWithCred(cmd, username, password)
+	impl.logger.Debugw("branch output", "root", rootDir, "opt", output, "errMsg", errMsg, "error", err)
 	return output, errMsg, err
 }
 
@@ -103,16 +110,25 @@ func (impl *GitCliUtil) Clone(rootDir string, remoteUrl string, username string,
 	response, errMsg, err = impl.Fetch(rootDir, username, password)
 	if err == nil && errMsg == "" {
 		impl.logger.Warn("git fetch completed, pulling master branch data from remote origin")
-		response, errMsg, err = impl.Pull(rootDir, username, password, Branch_Master)
-		if err != nil {
-			impl.logger.Errorw("error on git pull master branch", "err", err)
-			response, errMsg, err = impl.Pull(rootDir, username, password, Branch_Main)
-			if err != nil {
-				impl.logger.Errorw("error on git pull master main", "err", err)
-				msg := "can't find valid branches in git repo , repo must have main or master branch"
-				err = &ApiError{HttpStatusCode: 200, Code: "400", InternalMessage: msg, UserMessage: msg}
-				return response, errMsg, err
+		response, errMsg, err = impl.ListBranch(rootDir, username, password)
+		branches := strings.Split(response, "\n")
+		impl.logger.Info(branches)
+		branch := ""
+		for _, item := range branches {
+			if strings.TrimSpace(item) == "origin/master" {
+				branch = Branch_Master
 			}
+		}
+		if len(branch) == 0 && len(branches) > 0 {
+			branch = strings.ReplaceAll(branches[0], "origin/", "")
+		} else {
+			// only fetch will work, as we don't have any branch for pull
+			return "", "", nil
+		}
+		response, errMsg, err = impl.Pull(rootDir, username, password, branch)
+		if err != nil {
+			impl.logger.Errorw("error on git pull", "branch", branch, "err", err)
+			return "", "", err
 		}
 	}
 	return response, errMsg, err
