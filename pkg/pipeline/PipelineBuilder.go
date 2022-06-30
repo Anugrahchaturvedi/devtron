@@ -30,7 +30,6 @@ import (
 	repository4 "github.com/devtron-labs/devtron/pkg/pipeline/history/repository"
 	"github.com/devtron-labs/devtron/pkg/sql"
 	util3 "github.com/devtron-labs/devtron/pkg/util"
-	"github.com/google/go-github/github"
 	"net/http"
 	"net/url"
 	"sort"
@@ -1053,16 +1052,19 @@ func (impl PipelineBuilderImpl) CreateCdPipelines(pipelineCreateRequest *bean.Cd
 		}
 		err = impl.chartTemplateService.RegisterInArgo(chartGitAttr, ctx)
 		if err != nil {
-			responseErr, ok := err.(*github.ErrorResponse)
-			if !ok || responseErr.Response.StatusCode == 404 {
-				// TODO - found empty repository, create some file in repository
-				err := impl.chartTemplateService.CreateFileAtRepo(gitOpsRepoName, pipelineCreateRequest.UserId)
+			impl.logger.Errorw("error in register in argo", "err", err)
+			emptyRepoErrorMessage := "failed to get index: 404 Not Found"
+			if err.Error() == emptyRepoErrorMessage {
+				// - found empty repository, create some file in repository
+				err := impl.chartTemplateService.CreateReadmeInGitRepo(gitOpsRepoName, pipelineCreateRequest.UserId)
 				if err != nil {
+					impl.logger.Errorw("error in creating file in git repo", "err", err)
 					return nil, err
 				}
-				// TODO - retry register in argo
+				// - retry register in argo
 				err = impl.chartTemplateService.RegisterInArgo(chartGitAttr, ctx)
 				if err != nil {
+					impl.logger.Errorw("error in re-try register in argo", "err", err)
 					return nil, err
 				}
 			} else {

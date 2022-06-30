@@ -312,13 +312,6 @@ func (impl GitLabClient) CreateRepository(name, description, bitbucketWorkspaceI
 		return "", false, detailedErrorGitOpsConfigActions
 	}
 	if len(repoUrl) > 0 {
-		// This will update readme on cd pipeline creation, this is because for empty repository argocd will throw error.
-		_, err = impl.CreateReadme(impl.config.GitlabGroupPath, name, userName, userEmailId)
-		if err != nil {
-			impl.logger.Errorw("error in creating readme ", "gitlab project", name, "err", err)
-			detailedErrorGitOpsConfigActions.StageErrorMap[CreateReadmeStage] = err
-			return repoUrl, true, detailedErrorGitOpsConfigActions
-		}
 		detailedErrorGitOpsConfigActions.SuccessfulStages = append(detailedErrorGitOpsConfigActions.SuccessfulStages, GetRepoUrlStage)
 		return repoUrl, false, detailedErrorGitOpsConfigActions
 	} else {
@@ -693,13 +686,6 @@ func (impl GitHubClient) CreateRepository(name, description, bitbucketWorkspaceI
 		}
 	}
 	if repoExists {
-		// This will update readme on cd pipeline creation, this is because for empty repository argocd will throw error.
-		_, err = impl.CreateReadme(name, userName, userEmailId, "")
-		if err != nil {
-			impl.logger.Errorw("error in creating readme github", "project", name, "err", err)
-			detailedErrorGitOpsConfigActions.StageErrorMap[CreateReadmeStage] = err
-			return url, true, detailedErrorGitOpsConfigActions
-		}
 		detailedErrorGitOpsConfigActions.SuccessfulStages = append(detailedErrorGitOpsConfigActions.SuccessfulStages, GetRepoUrlStage)
 		return url, false, detailedErrorGitOpsConfigActions
 	}
