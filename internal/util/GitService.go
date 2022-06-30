@@ -61,6 +61,7 @@ type GitClient interface {
 	CommitValues(config *ChartConfig, bitbucketWorkspaceId string) (commitHash string, err error)
 	GetRepoUrl(projectName string, repoOptions *bitbucket.RepositoryOptions) (repoUrl string, err error)
 	DeleteRepository(name, userName, gitHubOrgName, azureProjectName string, repoOptions *bitbucket.RepositoryOptions) error
+	CreateReadme(name, userName, userEmailId, owner string) (string, error)
 }
 
 type GitFactory struct {
@@ -312,7 +313,7 @@ func (impl GitLabClient) CreateRepository(name, description, bitbucketWorkspaceI
 	}
 	if len(repoUrl) > 0 {
 		// This will update readme on cd pipeline creation, this is because for empty repository argocd will throw error.
-		_, err = impl.createReadme(impl.config.GitlabGroupPath, name, userName, userEmailId)
+		_, err = impl.CreateReadme(impl.config.GitlabGroupPath, name, userName, userEmailId)
 		if err != nil {
 			impl.logger.Errorw("error in creating readme ", "gitlab project", name, "err", err)
 			detailedErrorGitOpsConfigActions.StageErrorMap[CreateReadmeStage] = err
@@ -340,7 +341,7 @@ func (impl GitLabClient) CreateRepository(name, description, bitbucketWorkspaceI
 		return "", true, detailedErrorGitOpsConfigActions
 	}
 	detailedErrorGitOpsConfigActions.SuccessfulStages = append(detailedErrorGitOpsConfigActions.SuccessfulStages, CloneHttpStage)
-	_, err = impl.createReadme(impl.config.GitlabGroupPath, name, userName, userEmailId)
+	_, err = impl.CreateReadme(impl.config.GitlabGroupPath, name, userName, userEmailId)
 	if err != nil {
 		impl.logger.Errorw("error in creating readme ", "gitlab project", name, "err", err)
 		detailedErrorGitOpsConfigActions.StageErrorMap[CreateReadmeStage] = err
@@ -443,7 +444,7 @@ func (impl GitLabClient) GetRepoUrl(projectName string, repoOptions *bitbucket.R
 	return "", nil
 }
 
-func (impl GitLabClient) createReadme(namespace, projectName, userName, userEmailId string) (res interface{}, err error) {
+func (impl GitLabClient) CreateReadme(namespace, projectName, userName, userEmailId string) (string, error) {
 	actions := &gitlab.CreateCommitOptions{
 		Branch:        gitlab.String("master"),
 		CommitMessage: gitlab.String("test commit"),
@@ -452,7 +453,7 @@ func (impl GitLabClient) createReadme(namespace, projectName, userName, userEmai
 		AuthorName:    &userName,
 	}
 	c, _, err := impl.client.Commits.CreateCommit(fmt.Sprintf("%s/%s", namespace, projectName), actions)
-	return c, err
+	return c.ID, err
 }
 func (impl GitLabClient) checkIfFileExists(projectName, ref, file string) (exists bool, err error) {
 	_, _, err = impl.client.RepositoryFiles.GetFileMetaData(fmt.Sprintf("%s/%s", impl.config.GitlabGroupPath, projectName), file, &gitlab.GetFileMetaDataOptions{Ref: &ref})
@@ -693,7 +694,7 @@ func (impl GitHubClient) CreateRepository(name, description, bitbucketWorkspaceI
 	}
 	if repoExists {
 		// This will update readme on cd pipeline creation, this is because for empty repository argocd will throw error.
-		_, err = impl.createReadme(name, userName, userEmailId)
+		_, err = impl.CreateReadme(name, userName, userEmailId, "")
 		if err != nil {
 			impl.logger.Errorw("error in creating readme github", "project", name, "err", err)
 			detailedErrorGitOpsConfigActions.StageErrorMap[CreateReadmeStage] = err
@@ -730,7 +731,7 @@ func (impl GitHubClient) CreateRepository(name, description, bitbucketWorkspaceI
 	}
 	detailedErrorGitOpsConfigActions.SuccessfulStages = append(detailedErrorGitOpsConfigActions.SuccessfulStages, CloneHttpStage)
 
-	_, err = impl.createReadme(name, userName, userEmailId)
+	_, err = impl.CreateReadme(name, userName, userEmailId, "")
 	if err != nil {
 		impl.logger.Errorw("error in creating readme github", "project", name, "err", err)
 		detailedErrorGitOpsConfigActions.StageErrorMap[CreateReadmeStage] = err
@@ -753,7 +754,7 @@ func (impl GitHubClient) CreateRepository(name, description, bitbucketWorkspaceI
 	return *r.CloneURL, true, detailedErrorGitOpsConfigActions
 }
 
-func (impl GitHubClient) createReadme(repoName, userName, userEmailId string) (string, error) {
+func (impl GitHubClient) CreateReadme(repoName, userName, userEmailId, owner string) (string, error) {
 	cfg := &ChartConfig{
 		ChartName:      repoName,
 		ChartLocation:  "",

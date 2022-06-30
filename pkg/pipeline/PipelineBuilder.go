@@ -30,6 +30,7 @@ import (
 	repository4 "github.com/devtron-labs/devtron/pkg/pipeline/history/repository"
 	"github.com/devtron-labs/devtron/pkg/sql"
 	util3 "github.com/devtron-labs/devtron/pkg/util"
+	"github.com/google/go-github/github"
 	"net/http"
 	"net/url"
 	"sort"
@@ -1052,7 +1053,21 @@ func (impl PipelineBuilderImpl) CreateCdPipelines(pipelineCreateRequest *bean.Cd
 		}
 		err = impl.chartTemplateService.RegisterInArgo(chartGitAttr, ctx)
 		if err != nil {
-			return nil, err
+			responseErr, ok := err.(*github.ErrorResponse)
+			if !ok || responseErr.Response.StatusCode == 404 {
+				// TODO - found empty repository, create some file in repository
+				err := impl.chartTemplateService.CreateFileAtRepo(gitOpsRepoName, pipelineCreateRequest.UserId)
+				if err != nil {
+					return nil, err
+				}
+				// TODO - retry register in argo
+				err = impl.chartTemplateService.RegisterInArgo(chartGitAttr, ctx)
+				if err != nil {
+					return nil, err
+				}
+			} else {
+				return nil, err
+			}
 		}
 
 		// here updating all the chart version git repo url, as per current implementation all are same git repo url but we have to update each row

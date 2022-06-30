@@ -67,7 +67,7 @@ func (impl GitAzureClient) CreateRepository(name, description, bitbucketWorkspac
 	}
 	if repoExists {
 		// This will update readme on cd pipeline creation, this is because for empty repository argocd will throw error.
-		_, err = impl.createReadme(name, userName, userEmailId)
+		_, err = impl.CreateReadme(name, userName, userEmailId, "")
 		if err != nil {
 			impl.logger.Errorw("error in creating readme azure", "project", name, "err", err)
 			detailedErrorGitOpsConfigActions.StageErrorMap[CreateReadmeStage] = err
@@ -103,7 +103,7 @@ func (impl GitAzureClient) CreateRepository(name, description, bitbucketWorkspac
 	}
 	detailedErrorGitOpsConfigActions.SuccessfulStages = append(detailedErrorGitOpsConfigActions.SuccessfulStages, CloneHttpStage)
 
-	_, err = impl.createReadme(name, userName, userEmailId)
+	_, err = impl.CreateReadme(name, userName, userEmailId, "")
 	if err != nil {
 		impl.logger.Errorw("error in creating readme azure", "project", name, "err", err)
 		detailedErrorGitOpsConfigActions.StageErrorMap[CreateReadmeStage] = err
@@ -125,7 +125,7 @@ func (impl GitAzureClient) CreateRepository(name, description, bitbucketWorkspac
 	return *operationReference.WebUrl, true, detailedErrorGitOpsConfigActions
 }
 
-func (impl GitAzureClient) createReadme(repoName, userName, userEmailId string) (string, error) {
+func (impl GitAzureClient) CreateReadme(repoName, userName, userEmailId, owner string) (string, error) {
 	cfg := &ChartConfig{
 		ChartName:      repoName,
 		ChartLocation:  "",

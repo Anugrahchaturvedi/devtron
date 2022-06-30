@@ -64,6 +64,7 @@ type ChartTemplateService interface {
 	RegisterInArgo(chartGitAttribute *ChartGitAttribute, ctx context.Context) error
 	BuildChartAndPushToGitRepo(chartMetaData *chart.Metadata, referenceTemplatePath string, gitOpsRepoName, referenceTemplate, version, repoUrl string, userId int32) error
 	GetByteArrayRefChart(chartMetaData *chart.Metadata, referenceTemplatePath string) ([]byte, error)
+	CreateFileAtRepo(gitOpsRepoName string, userId int32) error
 }
 type ChartTemplateServiceImpl struct {
 	randSource             rand.Source
@@ -215,6 +216,15 @@ func (impl ChartTemplateServiceImpl) BuildChartAndPushToGitRepo(chartMetaData *c
 
 type ChartGitAttribute struct {
 	RepoUrl, ChartLocation string
+}
+
+func (impl ChartTemplateServiceImpl) CreateFileAtRepo(gitOpsRepoName string, userId int32) error {
+	userEmailId, userName := impl.GetUserEmailIdAndNameForGitOpsCommit(userId)
+	_, err := impl.gitFactory.Client.CreateReadme(gitOpsRepoName, userName, userEmailId, "")
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func (impl ChartTemplateServiceImpl) CreateGitRepositoryForApp(gitOpsRepoName, baseTemplateName, version string, userId int32) (chartGitAttribute *ChartGitAttribute, err error) {
